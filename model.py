@@ -3,7 +3,7 @@ import time
 #import math
 import bisect
 import matplotlib.pyplot as plt
-#import matplotlib.ticker as tic
+import matplotlib.ticker as tic
 from balloon import Balloon
 from atmosphere import standardAtmosphere
 
@@ -38,14 +38,23 @@ while volumes[-1] <= balloon1.burstVolume():
     altitudes.append(altitudes[-1] + ascentRates[-1] * timeStep)
     times.append(times[-1] + timeStep / 60)
 
-plt.plot(times[:-1], np.array(altitudes[:-1]) / 1000)
-plt.xlabel("Time (min)")
-plt.ylabel("Altitude (km)")
-plt.title("Ascent Profile")
+fig, ax = plt.subplots()
+
+ax.plot(times[:-1], np.array(altitudes[:-1]) / 1000)
+ax.set_xlabel("Time (min)")
+ax.xaxis.set_major_locator(tic.MultipleLocator(10))
+ax.xaxis.set_minor_locator(tic.AutoMinorLocator(2))
+ax.set_ylabel("Altitude (km)")
+ax.yaxis.set_major_locator(tic.MultipleLocator(5))
+ax.yaxis.set_minor_locator(tic.AutoMinorLocator(6))
+
+ax.set_xlim(min(times[:-1]), max(times[:-1]) + 10)
+ax.set_ylim(min(np.array(altitudes[:-1]) / 1000), np.ceil(max(np.array(altitudes[:-1]) / 1000)) + 2)
+
+plt.title("Mission Ascent Profile")
 plt.legend()
 plt.grid(True, which='both', linestyle='--')
 plt.show()
-
 '''
 fig, ax1 = plt.subplots()
 
@@ -53,9 +62,10 @@ ax1.plot(pressures, np.array(altitudes[:-1]) / 1000, "b-", label="Pressure")
 ax1.set_xlabel("Pressure (kPa)")
 ax1.set_ylabel("Altitude (m)")
 ax1.set_xscale('log')
-ax1.yaxis.set_major_locator(tic.MultipleLocator(10))
+ax1.yaxis.set_major_locator(tic.MultipleLocator(5))
 ax1.tick_params(axis = "x", colors = "blue")
 ax1.legend(loc='upper right')
+ax1.grid(True, which='both', linestyle='--')
 
 ax2 = ax1.twiny()
 ax2.plot(densities, np.array(altitudes[:-1]) / 1000, "r--", label="Density")
@@ -65,11 +75,10 @@ ax2.tick_params(axis = "x", colors = "red")
 ax2.legend(loc='lower left')
 
 ax1.set_xlim(min(min(pressures), min(densities)) / 10 ** 0.5, max(max(pressures), max(densities)) * 10 ** 0.5)
-ax1.set_ylim(min(np.array(altitudes[:-1]) / 1000), np.ceil(max(np.array(altitudes[:-1]) / 1000) / 10) * 10)
+ax1.set_ylim(min(np.array(altitudes[:-1]) / 1000), np.ceil(max(np.array(altitudes[:-1]) / 1000)) + 2)
 ax2.set_xlim(ax1.get_xlim())
 
-plt.title("ISA Profile")
-plt.grid(True)
+plt.title("Mission ISA Profile")
 plt.tight_layout()
 plt.show()
 '''
