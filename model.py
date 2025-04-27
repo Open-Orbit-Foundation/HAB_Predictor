@@ -1,46 +1,92 @@
 import numpy as np
 import time
-#import math
+import math
 import bisect
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tic
 from balloon import Balloon
 from atmosphere import standardAtmosphere
 
-launchAltitude = 0
+start_time = time.perf_counter()
 
-balloon1 = Balloon(0.6 + 0.6, 1.2, 19.8 * 0.3048, 0.55)
+dataSets = []
+balloons = [
+    Balloon(0.3 + 0.6, 1.2, 19.8 * 0.3048, 0.55, 1.2, math.pi / 4 * (2 * 0.3048) ** 2),
+    Balloon(0.6 + 0.6, 1.2, 19.8 * 0.3048, 0.55, 1.2, math.pi / 4 * (2 * 0.3048) ** 2),
+    Balloon(0.8 + 0.6, 1.6, 19.8 * 0.3048, 0.55, 1.2, math.pi / 4 * (2 * 0.3048) ** 2)
+]
+
+launchAltitude = 1400
+
 atmosphere = standardAtmosphere()
 
 def calculateAscentRate(dragCoefficient, gravity, density, volume, mass, crossSection):
-    ascentRate = (2 * gravity * (density * volume - mass) / (dragCoefficient * density * crossSection)) ** 0.5
+    ascentRate = np.sign(density * volume - mass) * (2 * gravity * abs(density * volume - mass) / (dragCoefficient * density * crossSection)) ** 0.5
     return ascentRate
 
+def calculateDescentRate(dragCoefficient, gravity, density, mass, crossSection):
+    descentRate = - ((2 * gravity * mass) / (dragCoefficient * density * crossSection)) ** 0.5
+    return descentRate
+
+volumes = []
 pressures = []
 temperatures = []
 densities = []
-volumes = [balloon1.gas]
 crossSections = []
 ascentRates = []
 altitudes = [launchAltitude]
 times = [0]
 timeStep = 10 #sec
 
-while volumes[-1] <= balloon1.burstVolume():
-    i = bisect.bisect(atmosphere.segments, altitudes[-1]) - 1
-    pressures.append(atmosphere.Pressure(i, altitudes[-1]))
-    temperatures.append(atmosphere.Temperature(i, altitudes[-1]))
-    densities.append(atmosphere.Density(pressures[-1], temperatures[-1]))
-    volumes.append(balloon1.Volume(pressures[-1]))
-    crossSections.append(balloon1.crossSection(volumes[-1]))
-    ascentRates.append(calculateAscentRate(balloon1.dragCoefficient, atmosphere._Gravity(altitudes[-1]), densities[-1], volumes[-1], balloon1.totalMass(), crossSections[-1]))
-    #print("Time: " + str(times[-1]) + " | Altitude: " + str(altitudes[-1]) + " | Ascent Rate: " + str(ascentRates[-1]) + " | Volume: " + str(volumes[-1]))
-    altitudes.append(altitudes[-1] + ascentRates[-1] * timeStep)
-    times.append(times[-1] + timeStep / 60)
+for balloon in balloons:
+    volumes.clear()
+    pressures.clear()
+    temperatures.clear()
+    densities.clear()
+    crossSections.clear()
+    ascentRates.clear()
+    altitudes = [launchAltitude]
+    times = [0]
+    volumes = [balloon.gas]
+    
+    while volumes[-1] <= balloon.burstVolume():
+        i = bisect.bisect(atmosphere.segments, altitudes[-1]) - 1
+        pressures.append(atmosphere.Pressure(i, altitudes[-1]))
+        temperatures.append(atmosphere.Temperature(i, altitudes[-1]))
+        densities.append(atmosphere.Density(pressures[-1], temperatures[-1]))
+        volumes.append(balloon.Volume(pressures[-1]))
+        crossSections.append(balloon.crossSection(volumes[-1]))
+        ascentRates.append(calculateAscentRate(balloon.dragCoefficient, atmosphere._Gravity(altitudes[-1]), densities[-1], volumes[-1], balloon.totalMass(), crossSections[-1]))
+        
+        if ascentRates[i] > 0:
+            altitudes.append(altitudes[-1] + ascentRates[-1] * timeStep)
+        else:
+            break
+        
+        times.append(times[-1] + timeStep / 60)
+
+    while altitudes[-1] > altitudes[0]:
+        i = bisect.bisect(atmosphere.segments, altitudes[-1]) - 1
+        pressures.append(atmosphere.Pressure(i, altitudes[-1]))
+        temperatures.append(atmosphere.Temperature(i, altitudes[-1]))
+        densities.append(atmosphere.Density(pressures[-1], temperatures[-1]))
+        ascentRates.append(calculateDescentRate(balloon.parachuteDragCoefficient, atmosphere._Gravity(altitudes[-1]), densities[-1], balloon.mass, balloon.parachuteCrossSection))
+        altitudes.append(altitudes[-1] + ascentRates[-1] * timeStep)
+        times.append(times[-1] + timeStep / 60)
+
+    if altitudes[-1] == altitudes[0]:
+        del times[-1]
+        del altitudes[-1]
+    dataSets.append((times[:-1], altitudes[:-1]))
+
+end_time = time.perf_counter()
+print(f"Runtime: {end_time - start_time}")
 
 fig, ax = plt.subplots()
 
-ax.plot(times[:-1], np.array(altitudes[:-1]) / 1000)
+for i, (xValues, yValues) in enumerate(dataSets):
+    ax.plot(xValues, np.array(yValues) / 1000, label = f"Balloon {i + 1}")
+
 ax.set_xlabel("Time (min)")
 ax.xaxis.set_major_locator(tic.MultipleLocator(10))
 ax.xaxis.set_minor_locator(tic.AutoMinorLocator(2))
@@ -48,37 +94,7 @@ ax.set_ylabel("Altitude (km)")
 ax.yaxis.set_major_locator(tic.MultipleLocator(5))
 ax.yaxis.set_minor_locator(tic.AutoMinorLocator(6))
 
-ax.set_xlim(min(times[:-1]), max(times[:-1]) + 10)
-ax.set_ylim(min(np.array(altitudes[:-1]) / 1000), np.ceil(max(np.array(altitudes[:-1]) / 1000)) + 2)
-
-plt.title("Mission Ascent Profile")
+plt.title("Mission Altitude Profile(s)")
 plt.legend()
 plt.grid(True, which='both', linestyle='--')
 plt.show()
-'''
-fig, ax1 = plt.subplots()
-
-ax1.plot(pressures, np.array(altitudes[:-1]) / 1000, "b-", label="Pressure")
-ax1.set_xlabel("Pressure (kPa)")
-ax1.set_ylabel("Altitude (m)")
-ax1.set_xscale('log')
-ax1.yaxis.set_major_locator(tic.MultipleLocator(5))
-ax1.tick_params(axis = "x", colors = "blue")
-ax1.legend(loc='upper right')
-ax1.grid(True, which='both', linestyle='--')
-
-ax2 = ax1.twiny()
-ax2.plot(densities, np.array(altitudes[:-1]) / 1000, "r--", label="Density")
-ax2.set_xlabel("Density (kg/m^3)")
-ax2.set_xscale('log')
-ax2.tick_params(axis = "x", colors = "red")
-ax2.legend(loc='lower left')
-
-ax1.set_xlim(min(min(pressures), min(densities)) / 10 ** 0.5, max(max(pressures), max(densities)) * 10 ** 0.5)
-ax1.set_ylim(min(np.array(altitudes[:-1]) / 1000), np.ceil(max(np.array(altitudes[:-1]) / 1000)) + 2)
-ax2.set_xlim(ax1.get_xlim())
-
-plt.title("Mission ISA Profile")
-plt.tight_layout()
-plt.show()
-'''

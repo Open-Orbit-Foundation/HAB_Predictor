@@ -7,12 +7,14 @@ class Balloon:
     standardPressure = 101.325
     gasConstant = 1.380622 * 6.022169
 
-    def __init__(self, mass, gas, diameter, dragCoefficient):
+    def __init__(self, mass, gas, diameter, dragCoefficient, parachuteDragCoefficient, parachuteCrossSection):
         Balloon.balloons += 1
         self.mass = mass
         self.gas = gas
         self.diameter = diameter
         self.dragCoefficient = dragCoefficient
+        self.parachuteDragCoefficient = parachuteDragCoefficient
+        self.parachuteCrossSection = parachuteCrossSection
 
     def burstVolume(self):
         burstVolume = 4 / 3 * math.pi * (self.diameter / 2) ** 3
