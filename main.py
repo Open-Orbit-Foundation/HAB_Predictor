@@ -35,7 +35,7 @@ Model(0.5, mission_profiles, flight_profiles).altitude_model()
 end = time.perf_counter()
 print(f"Compute Time: {round(end - start, 2)}")
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize = (12, 9))
 for i, profile in enumerate(flight_profiles):
     ax.plot(np.array(profile.times) / 3600, np.array(profile.altitudes) / 1000, label = f"Profile {i + 1}")
     ax.set_xlabel("Time (hr)")
@@ -44,8 +44,20 @@ for i, profile in enumerate(flight_profiles):
     ax.set_ylabel("Altitude (km)")
     ax.yaxis.set_major_locator(tic.MultipleLocator(5))
     ax.yaxis.set_minor_locator(tic.AutoMinorLocator(6))
-plt.suptitle("RK4 Interial Model Altitude Profile(s)")
-#plt.title(f"Reached {round(max(profile.altitudes) / 1000, 1)} Km in {round(max(profile.times) / 3600, 1)} hours")
+    burst_index = profile.altitudes.index(max(profile.altitudes))
+    burst_time = profile.times[burst_index]
+    burst_altitude = profile.altitudes[burst_index]
+    ax.plot(burst_time / 3600, burst_altitude / 1000, 'x', color='black')
+    ax.annotate(
+        f"{burst_altitude / 1000:.1f} km\n{burst_time / 3600:.1f} hr",
+        xy = (burst_time / 3600, burst_altitude / 1000),
+        xytext = (-20, 5),
+        textcoords = 'offset points',
+        ha = 'center',
+        fontsize = 8,
+        bbox = dict(facecolor = 'white', alpha = 0.7, edgecolor = 'none', boxstyle = 'round, pad = 0.1')
+    )
+plt.title("RK4 Interial Model Altitude Profile(s)")
 plt.legend()
 plt.grid(True, which='both', linestyle='--')
 plt.show()
@@ -58,7 +70,7 @@ for i, profile in enumerate(flight_profiles):
     ax.xaxis.set_minor_locator(tic.AutoMinorLocator(5))
     ax.set_ylabel("Pressure (hPa)")
     ax.set_yscale('log')
-plt.suptitle("RK4 Interial Model Pressure Profile(s)")
+plt.title("RK4 Interial Model Pressure Profile(s)")
 plt.legend()
 plt.grid(True, which='both', linestyle='--')
 plt.show()
