@@ -62,4 +62,5 @@ class standardAtmosphere:
         pressure = self.Pressure(i, geometricAltitude)
         temperature = self.Temperature(i, geometricAltitude)
         density = self.Density(pressure, temperature)
-        return pressure, density
+        gravity = self._Gravity(geometricAltitude)
+        return pressure, temperature, density, gravity

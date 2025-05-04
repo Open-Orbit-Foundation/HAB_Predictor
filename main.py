@@ -1,36 +1,62 @@
+from model import LaunchSite, Balloon, Payload, MissionProfile, Model
+from atmosphere import standardAtmosphere
 import numpy as np
 import time
-import math
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tic
-from balloon import Balloon
-from model import Model
 
-dataSets = []
-
-balloons = [
-    Balloon(0.3 + 0.6, 1.2, 19.8 * 0.3048, 0.55, 1.2, math.pi / 4 * (2 * 0.3048) ** 2),
-    Balloon(0.6 + 0.6, 1.2, 19.8 * 0.3048, 0.55, 1.2, math.pi / 4 * (2 * 0.3048) ** 2),
-    Balloon(0.8 + 0.6, 1.6, 19.8 * 0.3048, 0.55, 1.2, math.pi / 4 * (2 * 0.3048) ** 2)
+launch_sites = [
+    LaunchSite(1400)
 ]
 
-launchAltitude = 1400
+balloons = [
+    Balloon(0.6, 19.8 * 0.3048, 0.55, "Helium", 1.5 / 0.3048 ** 3),
+    Balloon(0.6, 19.8 * 0.3048, 0.55, "Helium", 1.2 / 0.3048 ** 3)
+]
 
-start_time = time.perf_counter()
-Model(balloons, launchAltitude, dataSets).altitudeModel()
-end_time = time.perf_counter()
-print(f"Runtime: {end_time - start_time}")
+payloads = [
+    Payload(0.6, 2 * 0.3048, 1.2),
+    Payload(0.3, 2 * 0.3048, 1.2)
+]
 
-fig, ax = plt.subplots()
-for i, (xValues, yValues) in enumerate(dataSets):
-    ax.plot(xValues, np.array(yValues) / 1000, label = f"Balloon {i + 1}")
-ax.set_xlabel("Time (min)")
-ax.xaxis.set_major_locator(tic.MultipleLocator(10))
-ax.xaxis.set_minor_locator(tic.AutoMinorLocator(2))
-ax.set_ylabel("Altitude (km)")
-ax.yaxis.set_major_locator(tic.MultipleLocator(5))
-ax.yaxis.set_minor_locator(tic.AutoMinorLocator(6))
-plt.title("Mission Altitude Profile(s)")
-plt.legend()
-plt.grid(True, which='both', linestyle='--')
-plt.show()
+mission_profiles = [
+    MissionProfile(standardAtmosphere(), launch_sites[0], balloons[0], payloads[0])#,
+    #MissionProfile(standardAtmosphere(), launch_sites[0], balloons[0], payloads[1]),
+    #MissionProfile(standardAtmosphere(), launch_sites[0], balloons[1], payloads[0]),
+    #MissionProfile(standardAtmosphere(), launch_sites[0], balloons[1], payloads[1])
+]
+
+flight_profiles = []
+
+start = time.perf_counter()
+Model(0.5, mission_profiles, flight_profiles).altitude_model()
+end = time.perf_counter()
+print(f"Compute Time: {round(end - start, 2)}")
+
+for profile in flight_profiles:
+    fig, ax = plt.subplots()
+    ax.plot(np.array(profile.times) / 60, np.array(profile.altitudes) / 1000, label = f"Balloon {1}")
+    ax.set_xlabel("Time (min)")
+    ax.xaxis.set_major_locator(tic.MultipleLocator(20))
+    ax.xaxis.set_minor_locator(tic.AutoMinorLocator(4))
+    ax.set_ylabel("Altitude (km)")
+    ax.yaxis.set_major_locator(tic.MultipleLocator(5))
+    ax.yaxis.set_minor_locator(tic.AutoMinorLocator(6))
+    plt.suptitle("RK4 Interial Model Altitude Profile(s)")
+    plt.title(f"Reached {round(max(profile.altitudes) / 1000, 1)} Km in {round(max(profile.times) / 3600, 1)} hours")
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--')
+    plt.show()
+
+    fig, ax = plt.subplots()
+    ax.plot(np.array(profile.times) / 60, np.array(profile.pressures) * 10, label = f"Balloon {1}")
+    ax.set_xlabel("Time (min)")
+    ax.xaxis.set_major_locator(tic.MultipleLocator(20))
+    ax.xaxis.set_minor_locator(tic.AutoMinorLocator(4))
+    ax.set_ylabel("Pressure (hPa)")
+    ax.yaxis.set_major_locator(tic.MultipleLocator(100))
+    ax.yaxis.set_minor_locator(tic.AutoMinorLocator(2))
+    plt.title("RK4 Interial Model Pressure Profile(s)")
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--')
+    plt.show()
