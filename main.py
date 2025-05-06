@@ -1,4 +1,4 @@
-from model_new import LaunchSite, Balloon, Payload, MissionProfile, Model
+from model import LaunchSite, Balloon, Payload, MissionProfile, Model
 from atmosphere import standardAtmosphere
 import numpy as np
 import time
