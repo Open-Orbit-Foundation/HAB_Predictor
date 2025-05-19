@@ -1,5 +1,4 @@
 import math
-import sys
 
 class Integrator:
     @staticmethod
@@ -63,22 +62,11 @@ class Geometry:
     @staticmethod
     def sphere_cross_section(V):
         return math.pi * ((3 * V) / (4 * math.pi)) ** (2 / 3)
-    
-class Physics:
-    @staticmethod
-    def volume_to_moles(V): #m^3, g/mol
-        return V * 1000 * 101.325 / (1.380622 * 6.022169 * 273.15 )
-    
-    def volume(Vi, T, P):
-        return (Vi * 101.325 / 288.15) * (T / P)
-    
-    def acceleration(F, m):
-        return F / m
 
 class Utility:
     @staticmethod 
-    def progress_bar(current, total, prefix='', suffix='', bar_length=100):
+    def progress_bar(current, total, prefix="", suffix="", bar_length=100):
         fraction = current / total
         completed = int(bar_length * fraction)
-        bar = '#' * completed + '-' * (bar_length - completed)
-        sys.stdout.write(f'\r{prefix} |{bar}| {current / total * 100:.0f}% {suffix}')
+        bar = "#" * completed + "-" * (bar_length - completed)
+        return f"\r{prefix} |{bar}| {f"{current / total * 100:.0f}%":>4} {suffix}"

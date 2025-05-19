@@ -10,27 +10,29 @@ class standardAtmosphere:
     gasConstant = 1.380622 * 6.022169
     mixedMolecularWeight = 28.9644
     earthRadius = 6356766
+    #altitudes_cache = np.linspace(0, 80000, 801)
 
     def __init__(self):
         self._base_temps = self._baseTemperatures()
         self._base_pressures = self._basePressures()
+        #self.atmospheric_properties = [self._Qualities(alt) for alt in self.altitudes_cache]
 
     def _Altitude(self, geometricAltitude): #meters
-        geopotentialAltitude = geometricAltitude * standardAtmosphere.earthRadius / (geometricAltitude + standardAtmosphere.earthRadius)
+        geopotentialAltitude = geometricAltitude * self.earthRadius / (geometricAltitude + self.earthRadius)
         return geopotentialAltitude
     
     def _Gravity(self, geometricAltitude): #meters
-        graviationalAcceleration = standardAtmosphere.gravitationalAcceleration * (standardAtmosphere.earthRadius / (standardAtmosphere.earthRadius + geometricAltitude)) ** 2
+        graviationalAcceleration = self.gravitationalAcceleration * (self.earthRadius / (self.earthRadius + geometricAltitude)) ** 2
         return graviationalAcceleration
 
     def _Temperature(self, index, geopotentialAltitude):
-        scalar = standardAtmosphere.lapseRates[index] * (geopotentialAltitude - standardAtmosphere.segments[index]) / 1000
+        scalar = self.lapseRates[index] * (geopotentialAltitude - self.segments[index]) / 1000
         return scalar
     
     def _baseTemperatures(self):
-        baseTemperatures = [standardAtmosphere.standardTemperature]
-        for i in range(len(standardAtmosphere.segments) - 1):
-            baseTemperatures.append(baseTemperatures[i] + self._Temperature(i, standardAtmosphere.segments[i + 1]))
+        baseTemperatures = [self.standardTemperature]
+        for i in range(len(self.segments) - 1):
+            baseTemperatures.append(baseTemperatures[i] + self._Temperature(i, self.segments[i + 1]))
         return baseTemperatures
 
     def Temperature(self, index, geometricAltitude):
@@ -38,16 +40,16 @@ class standardAtmosphere:
         return temperature
     
     def _Pressure(self, index, geopotentialAltitude):
-        if standardAtmosphere.lapseRates[index] != 0:
-            scalar = (self._base_temps[index] / ((self._base_temps[index] + standardAtmosphere.lapseRates[index] * (geopotentialAltitude - standardAtmosphere.segments[index]) / 1000))) ** (standardAtmosphere.gravitationalAcceleration * standardAtmosphere.mixedMolecularWeight / (standardAtmosphere.gasConstant * standardAtmosphere.lapseRates[index]))
+        if self.lapseRates[index] != 0:
+            scalar = (self._base_temps[index] / ((self._base_temps[index] + self.lapseRates[index] * (geopotentialAltitude - self.segments[index]) / 1000))) ** (self.gravitationalAcceleration * self.mixedMolecularWeight / (self.gasConstant * self.lapseRates[index]))
         else:
-            scalar = np.exp((-standardAtmosphere.gravitationalAcceleration * standardAtmosphere.mixedMolecularWeight * (geopotentialAltitude - standardAtmosphere.segments[index]) / 1000) / (standardAtmosphere.gasConstant * self._base_temps[index]))
+            scalar = np.exp((-self.gravitationalAcceleration * self.mixedMolecularWeight * (geopotentialAltitude - self.segments[index]) / 1000) / (self.gasConstant * self._base_temps[index]))
         return scalar
     
     def _basePressures(self):
-        basePressures = [standardAtmosphere.standardPressure]
-        for i in range(len(standardAtmosphere.segments) - 1):
-            basePressures.append(basePressures[i] * self._Pressure(i, standardAtmosphere.segments[i + 1]))
+        basePressures = [self.standardPressure]
+        for i in range(len(self.segments) - 1):
+            basePressures.append(basePressures[i] * self._Pressure(i, self.segments[i + 1]))
         return basePressures
 
     def Pressure(self, index, geometricAltitude):
@@ -55,7 +57,7 @@ class standardAtmosphere:
         return pressure
 
     def Density(self, pressure, temperature):
-        density = pressure * standardAtmosphere.mixedMolecularWeight / (standardAtmosphere.gasConstant * temperature)
+        density = pressure * self.mixedMolecularWeight / (self.gasConstant * temperature)
         return density
     
     def _Qualities(self, geometricAltitude):
