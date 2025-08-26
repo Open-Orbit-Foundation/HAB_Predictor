@@ -46,55 +46,82 @@ if __name__ == "__main__":
     ]
 
     balloons = [
-        Balloon(0.60, 6.03504, 0.55, "Helium", 2.12376), #75 cuft
-        Balloon(0.15, 2.52, 0.55, "Helium", 0.9),
-        Balloon(0.20, 3.00, 0.55, "Helium", 1.0),
-        Balloon(0.30, 3.78, 0.55, "Helium", 1.2),
-        Balloon(0.35, 4.12, 0.55, "Helium", 1.3),
-        Balloon(0.60, 6.02, 0.55, "Helium", 1.5),
-        Balloon(0.80, 7.00, 0.55, "Helium", 1.7),
-        Balloon(1.00, 7.86, 0.55, "Helium", 1.9),
-        Balloon(1.20, 8.63, 0.55, "Helium", 2.1),
-        Balloon(1.50, 9.44, 0.55, "Helium", 2.3),
-        Balloon(1.60, 9.71, 0.55, "Helium", 2.5),
-        Balloon(1.80, 9.98, 0.55, "Helium", 2.7),
-        Balloon(2.00, 10.54, 0.55, "Helium", 2.9),
-        Balloon(3.00, 13.00, 0.55, "Helium", 4.0),
-        Balloon(4.00, 12.06, 0.55, "Helium", 5.0)
+        #Balloon(0.60, 6.03504, 0.55, "Helium", 1),
+        Balloon(0.60, 6.03504, 0.55, "Helium", 2.12376)#, #75 cuft
+        #Balloon(0.15, 2.52, 0.55, "Helium", 0.9),
+        #Balloon(0.20, 3.00, 0.55, "Helium", 1.0),
+        #Balloon(0.30, 3.78, 0.55, "Helium", 1.2),
+        #Balloon(0.35, 4.12, 0.55, "Helium", 1.3),
+        #Balloon(0.60, 6.02, 0.55, "Helium", 1.5),
+        #Balloon(0.80, 7.00, 0.55, "Helium", 1.7),
+        #Balloon(1.00, 7.86, 0.55, "Helium", 1.9),
+        #Balloon(1.20, 8.63, 0.55, "Helium", 2.1),
+        #Balloon(1.50, 9.44, 0.55, "Helium", 2.3),
+        #Balloon(1.60, 9.71, 0.55, "Helium", 2.5),
+        #Balloon(1.80, 9.98, 0.55, "Helium", 2.7),
+        #Balloon(2.00, 10.54, 0.55, "Helium", 2.9),
+        #Balloon(3.00, 13.00, 0.55, "Helium", 4.0),
+        #Balloon(4.00, 15.06, 0.55, "Helium", 5.0)
     ]
 
+    '''for i in np.logspace(0,1,501):
+        balloons.append(Balloon(0.35, 4.12, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(0.60, 6.02, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(0.80, 7.00, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(1.00, 7.86, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(1.20, 8.63, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(1.50, 9.44, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(1.60, 9.71, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(1.80, 9.98, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(2.00, 10.54, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(3.00, 13.00, 0.55, "Helium", i))
+    for i in np.logspace(0,1,501):
+        balloons.append(Balloon(4.00, 15.06, 0.55, "Helium", i))'''
+
     payloads = [
-        Payload(0.952544, 3 * 0.3048, 0.97) #2.1 lb Rocketman profile
+        Payload(0.822, 3 * 0.3048, 0.97) #2.1 lb Rocketman profile
     ]
 
     mission_profiles = [
-        MissionProfile(launch_sites[0], balloons[0], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[1], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[2], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[3], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[4], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[5], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[6], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[7], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[8], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[9], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[10], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[11], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[12], payloads[0]),
-        MissionProfile(launch_sites[0], balloons[13], payloads[0])
+        MissionProfile(launch_sites[0], balloons[0], payloads[0])#,
+        #MissionProfile(launch_sites[0], balloons[1], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[2], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[3], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[4], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[5], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[6], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[7], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[8], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[9], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[10], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[11], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[12], payloads[0]),
+        #MissionProfile(launch_sites[0], balloons[13], payloads[0])
     ]
+
+    '''for i in range(len(balloons)):
+        mission_profiles.append(MissionProfile(launch_sites[0], balloons[i], payloads[0]))'''
 
     flight_profiles = []
 
     start = time.perf_counter()
-    Model(1.1, mission_profiles, flight_profiles).altitude_model(True, 10) #RK4 < 1.5 (5.48s), RK2 < 1.1 (5.16s), RK1 < 1.0 (4.49s)
+    Model(0.1, mission_profiles, flight_profiles).altitude_model(True, 10) #RK4 < 1.5 (5.48s), RK2 < 1.1 (5.16s), RK1 < 1.0 (4.49s)
     #After Updates on 5/19: RK4 < 1.5 (4.18s), RK2 < 1.1 (3.59s), RK1 < 1.0 (2.90s)
     end= time.perf_counter()
     print(f"Singleprocessing {int(len(mission_profiles))} Profiles in {end - start:.2f} seconds.")
 
     '''start = time.perf_counter()
     with ProcessPoolExecutor(max_workers = 8) as executor:
-        flight_profiles = list(executor.map(partial(run.predictor, dt = 1.1, logging = False, interval = 10), range(len(mission_profiles)), mission_profiles))
+        flight_profiles = list(executor.map(partial(run.predictor, dt = 0.4, logging = False, interval = 10), range(len(mission_profiles)), mission_profiles))
     end= time.perf_counter()
     print(f"Multiprocessing {int(len(mission_profiles))} Profiles in {end - start:.2f} seconds.")'''
 
@@ -109,8 +136,12 @@ if __name__ == "__main__":
         'velocities'],
         dtype='object')'''
 
-    high_altitudes = df[["burst_altitude"]]
-    print(high_altitudes)
+    burst_altitudes = df[["burst_altitude"]]
+    print(burst_altitudes)
+
+    burst_times = df[["burst_time"]]
+
+    gas_volumes = df[["balloon.gas_volume"]]
 
     #max_altitudes = df[["max_altitude"]]
     #print(max_altitudes)
@@ -136,20 +167,34 @@ if __name__ == "__main__":
         ax.set_ylabel("Altitude (km)")
         ax.yaxis.set_major_locator(tic.MultipleLocator(5))
         ax.yaxis.set_minor_locator(tic.AutoMinorLocator(5))
-        '''burst_index = profile.altitudes.index(max(profile.altitudes))
-        burst_time = profile.times[burst_index]
-        burst_altitude = profile.altitudes[burst_index]
-        ax.plot(burst_time / 3600, burst_altitude / 1000, 'x', color='black')
-        ax.annotate(
-            f"{burst_altitude / 1000:.1f} km\n{burst_time / 3600:.1f} hr",
-            xy = (burst_time / 3600, burst_altitude / 1000),
-            xytext = (-20, 5),
-            textcoords = 'offset points',
-            ha = 'center',
-            fontsize = 8,
-            bbox = dict(facecolor = 'white', alpha = 0.7, edgecolor = 'none', boxstyle = 'round, pad = 0.1')
-        )'''
     plt.title("RK4 Interial Model Altitude Profile(s)")
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--')
+    plt.show()
+
+    fig, ax = plt.subplots(figsize = (12, 9))
+    ax.plot(np.array(gas_volumes), np.array(burst_altitudes) / 1000, label = "burst altitudes")
+    ax.set_xlabel("Gas Volume (m^3)")
+    ax.xaxis.set_major_locator(tic.MultipleLocator(1))
+    ax.xaxis.set_minor_locator(tic.AutoMinorLocator(5))
+    ax.set_ylabel("Altitude (km)")
+    ax.yaxis.set_major_locator(tic.MultipleLocator(5))
+    ax.yaxis.set_minor_locator(tic.AutoMinorLocator(5))
+    plt.title("Burst Altitude Sweep")
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--')
+    plt.show()
+
+    fig, ax = plt.subplots(figsize = (12, 9))
+    ax.plot(np.array(burst_times) / 3600, np.array(burst_altitudes) / 1000, label = "burst altitudes")
+    ax.set_xlabel("Time (hr)")
+    ax.set_xlim(0, 12)
+    ax.xaxis.set_major_locator(tic.MultipleLocator(1))
+    ax.xaxis.set_minor_locator(tic.AutoMinorLocator(5))
+    ax.set_ylabel("Altitude (km)")
+    ax.yaxis.set_major_locator(tic.MultipleLocator(5))
+    ax.yaxis.set_minor_locator(tic.AutoMinorLocator(5))
+    plt.title("Burst Altitude Sweep")
     plt.legend()
     plt.grid(True, which='both', linestyle='--')
     plt.show()
