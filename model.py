@@ -5,6 +5,7 @@ from functools import partial
 import numpy as np
 import math
 import sys
+import time
 
 @dataclass(frozen=False)
 class LaunchSite:
@@ -91,7 +92,7 @@ class Model:
         return buoyant_force - weight_force - drag_force
 
     def altitude_model(self, logging: bool = True, interval: int = 1):
-        #start = time.perf_counter()
+        start = time.perf_counter()
         if logging:
             padding = len(f" Modelling {len(self.profiles)} Profiles ...")
         for i, profile in enumerate(self.profiles):
@@ -104,7 +105,7 @@ class Model:
             logged_times = [0]
             altitude = profile.launch_site.altitude
             altitudes = [altitude]
-            velocity = 0.01
+            velocity = 0
             velocities = [velocity]
             accelerations = [0]
             forces = [0]
@@ -120,7 +121,7 @@ class Model:
             ascent_mass = profile.payload.mass + profile.balloon.mass + (self.helium_mm * profile.balloon.gas_moles / 1000)
             descent_mass = profile.payload.mass
             while volume < burst_volume:
-                altitude, velocity, acceleration = Integrator.rk2_second_order(altitude, velocity, partial(self._ascent_acceleration, profile = profile, mass = ascent_mass), self.time_step)
+                altitude, velocity, acceleration = Integrator.rk4_second_order(altitude, velocity, partial(self._ascent_acceleration, profile = profile, mass = ascent_mass), self.time_step)
                 if altitude <= altitudes[0]:
                      break
                 #idx = np.searchsorted(self.atmosphere.altitudes_cache, altitude)
@@ -152,7 +153,7 @@ class Model:
                 burst_altitude = altitude
                 burst_time = times[-1]
             while altitude > altitudes[0]:
-                altitude, velocity, acceleration = Integrator.rk2_second_order(altitude, velocity, partial(self._descent_acceleration, profile = profile, mass = descent_mass), self.time_step / 2)
+                altitude, velocity, acceleration = Integrator.rk4_second_order(altitude, velocity, partial(self._descent_acceleration, profile = profile, mass = descent_mass), self.time_step / 2)
                 #idx = np.searchsorted(self.atmosphere.altitudes_cache, altitude)
                 #pressure, temperature, density, gravity = self.atmosphere.atmospheric_properties[idx]
                 pressure, temperature, density, gravity = self.atmosphere._Qualities(altitude)
@@ -188,6 +189,6 @@ class Model:
                                              logged_times, altitudes, velocities, accelerations, forces, 
                                              pressures, temperatures, densities, gravities,
                                              burst_altitude, np.max(altitudes), burst_time, flight_time))
-        #end = time.perf_counter()
-        #sys.stdout.write(f"{Utility.progress_bar(1, 1, prefix=f" Modelling {len(self.profiles)} Profiles ...".ljust(padding), suffix=f"Complete in {end - start:.2f} seconds\n", bar_length=100) if logging else print(f" Modelling {len(self.profiles)} Profiles in {end - start:.2f} seconds")}")
-        #sys.stdout.flush()
+        end = time.perf_counter()
+        sys.stdout.write(f"{Utility.progress_bar(1, 1, prefix=f" Modelling {len(self.profiles)} Profiles ...".ljust(padding), suffix=f"Complete in {end - start:.2f} seconds\n", bar_length=100) if logging else print(f" Modelling {len(self.profiles)} Profiles in {end - start:.2f} seconds")}")
+        sys.stdout.flush()
