@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import contextily as cx
-from pyproj import Transformer
 
 def extract_attributes(obj, prefix=""):
     attributes = {}
