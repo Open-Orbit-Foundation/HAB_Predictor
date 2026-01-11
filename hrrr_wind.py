@@ -12,6 +12,14 @@ from herbie import Herbie
 # --- Constants ---
 R_USSA = 6356766.0  # US Standard Atmosphere 1976 Earth radius (m)
 
+def _floor_to_hour(dt: datetime) -> datetime:
+    dt = dt.astimezone(timezone.utc)
+    return dt.replace(minute=0, second=0, microsecond=0)
+
+def _latest_safe_hrrr_run_dt(lag_hours: float = 2.0) -> datetime:
+    # HRRR is hourly; give it a small buffer so we don't request a run not yet on the bucket.
+    now = datetime.now(timezone.utc) - timedelta(hours=float(lag_hours))
+    return _floor_to_hour(now)
 
 def _to_datetime_utc(t) -> datetime:
     """Accept datetime / numpy datetime64 / pandas Timestamp / ISO string, return tz-aware UTC datetime."""
@@ -77,7 +85,7 @@ class _WindFile:
 class HRRRWind:
     def __init__(
         self,
-        run_utc: str,
+        run_utc: str | datetime,
         save_dir: str = "./hrrr_downloads",
         product: str = "prs",
         fallback_wind=None,
@@ -87,9 +95,43 @@ class HRRRWind:
         sample_alt_bin_m: float = 100.0,
         sample_latlon_decimals: int = 4,
         verbose: bool = False,
+        run_utc_lag_hours: float = 2.0,
+        clamp_run_utc_to_latest: bool = True,
     ):
-        self.run_utc_str = run_utc
-        self.run_dt = _to_datetime_utc(run_utc)
+        """HRRR wind interpolator.
+
+        Behavior intentionally matches `GFSWind` semantics:
+
+        - `run_utc` is treated as the *requested valid time* you care about (typically your sim start time).
+        - We choose the HRRR analysis cycle (`self.run_dt`) as the hour-aligned cycle at/before `run_utc`.
+        - If that cycle would be in the future / not yet available, we clamp `self.run_dt` back to the latest
+          safe cycle (using a lag buffer).
+        - Preload starts at the forecast hour that corresponds to `run_utc` relative to `self.run_dt`
+          (e.g., requested 06z with latest available cycle 02z => preload begins at F04, not F00).
+
+        Notes:
+          - HRRR forecast cadence is hourly (step=1).
+          - When clamped, we keep the original requested time to compute `f_start`, so behavior stays consistent
+            even if you asked for a future valid time.
+        """
+
+        if run_utc is None:
+            raise ValueError("HRRRWind requires run_utc (a requested valid time).")
+
+        # Requested valid time (what you asked for / sim start time)
+        requested_dt = _to_datetime_utc(run_utc)
+
+        # HRRR cycles hourly: the desired cycle is the hour-aligned requested time.
+        desired_cycle = _floor_to_hour(requested_dt)
+
+        # Clamp future/unavailable cycles back to a safe latest cycle if requested.
+        self.run_dt = desired_cycle
+        if clamp_run_utc_to_latest:
+            latest_ok = _latest_safe_hrrr_run_dt(run_utc_lag_hours)
+            if self.run_dt > latest_ok:
+                self.run_dt = latest_ok
+
+        self.run_utc_str = self.run_dt.strftime("%Y-%m-%d %H:%M")
 
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
@@ -113,13 +155,22 @@ class HRRRWind:
         self._crs_grid = None
         self._proj = None              # pyproj.Proj
         self._ll_to_xy = None          # pyproj.Transformer
+        self._xy_to_ll = None
         self._gamma_cache: Dict[Tuple[float, float], Tuple[float, float]] = {}  # (lat,lon)->(cosg,sing)
         self._printed_fileinfo = False
         self._printed_convergence = False
 
-        # Warm cache (inclusive: preload_hours=3 => F00..F03)
-        for fxx in range(0, min(self.preload_hours, self.max_hours_total) + 1):
-            self._ensure_loaded(fxx)
+        # ---- cadence-aware preload (hourly HRRR) ----
+        if self.preload_hours > 0:
+            dt_hr = (requested_dt - self.run_dt).total_seconds() / 3600.0
+            f_start = int(np.floor(dt_hr))  # hourly cadence
+            f_start = max(0, min(f_start, self.max_hours_total))
+
+            f0 = f_start
+            fN = min(self.max_hours_total, f_start + self.preload_hours)
+
+            for fxx in range(f0, fN + 1):
+                self._ensure_loaded(fxx)
 
     # ---------- Public API ----------
     def uv(self, time_utc, alt_m, lat_deg, lon_deg) -> Tuple[float, float]:
@@ -183,6 +234,39 @@ class HRRRWind:
         return out
 
     # ---------- Internals ----------
+    def _gamma_numeric_deg(self, lon_deg: float, lat_deg: float, dx_m: float = 1000.0) -> float:
+        """
+        Numerically estimate gamma (deg) by stepping +dx_m in grid-x and measuring
+        the resulting direction in geographic coordinates.
+
+        Returns gamma in the SAME convention used by _grid_to_earth's rotation matrix:
+            u_e = u_g*cos(gamma) - v_g*sin(gamma)
+            v_e = u_g*sin(gamma) + v_g*cos(gamma)
+        """
+        if self._ll_to_xy is None or self._xy_to_ll is None:
+            self._ensure_loaded(0)
+
+        x0, y0 = self._ll_to_xy.transform(float(lon_deg), float(lat_deg))
+        lon1, lat1 = self._xy_to_ll.transform(float(x0 + dx_m), float(y0))
+
+        # Bearing from (lat,lon) to (lat1,lon1), radians from north
+        phi0 = np.deg2rad(float(lat_deg))
+        phi1 = np.deg2rad(float(lat1))
+        dlon = np.deg2rad(((float(lon1) - float(lon_deg) + 540.0) % 360.0) - 180.0)
+
+        y = np.sin(dlon) * np.cos(phi1)
+        x = np.cos(phi0) * np.sin(phi1) - np.sin(phi0) * np.cos(phi1) * np.cos(dlon)
+        bearing_from_north = np.arctan2(y, x)
+
+        # Convert to angle from east (CCW positive): angle_e = pi/2 - bearing
+        angle_from_east = (np.pi / 2.0) - bearing_from_north
+
+        # We want gamma = angle from grid-x TO east (to match your rotation matrix),
+        # but angle_from_east is east->gridx, so negate:
+        gamma = -angle_from_east
+
+        return float(np.rad2deg(gamma))
+
     def _wrap180(self, lon):
         return (lon + 180.0) % 360.0 - 180.0
 
@@ -259,6 +343,8 @@ class HRRRWind:
         self._crs_grid = crs_grid
         self._proj = pyproj.Proj(crs_grid)
         self._ll_to_xy = pyproj.Transformer.from_crs(pyproj.CRS.from_epsg(4326), crs_grid, always_xy=True)
+        self._xy_to_ll = pyproj.Transformer.from_crs(crs_grid, pyproj.CRS.from_epsg(4326), always_xy=True)
+
 
     def _load_one(self, fxx: int) -> _WindFile:
         """
@@ -480,14 +566,23 @@ class HRRRWind:
         cached = self._gamma_cache.get(key)
         if cached is None:
             factors = self._proj.get_factors(float(lon_deg), float(lat_deg))
-            gamma = -float(factors.meridian_convergence)  # degrees
-            cg = float(np.cos(np.deg2rad(gamma)))
-            sg = float(np.sin(np.deg2rad(gamma)))
+            gamma = float(factors.meridian_convergence)  # degrees
+            if self.verbose and not getattr(self, "_printed_gamma_check", False):
+                gamma_num = self._gamma_numeric_deg(lon_deg, lat_deg, dx_m=1000.0)
+                print(
+                    f"[HRRR] gamma check @({lat_deg:.4f},{lon_deg:.4f}): "
+                    f"gamma_proj={gamma:.4f} deg, gamma_num={gamma_num:.4f} deg, "
+                    f"diff={gamma_num - gamma:+.4f} deg",
+                    flush=True
+                )
+                self._printed_gamma_check = True
+            cg = float(np.cos(np.deg2rad(-gamma)))
+            sg = float(np.sin(np.deg2rad(-gamma)))
             cached = (cg, sg)
             self._gamma_cache[key] = cached
 
             if self.verbose and not self._printed_convergence:
-                print(f"[HRRR] grid-relative winds detected; meridian_convergence={-gamma:.3f} deg "
+                print(f"[HRRR] grid-relative winds detected; meridian_convergence={gamma:.3f} deg "
                     f"at ({lat_deg:.4f},{lon_deg:.4f})", flush=True)
                 self._printed_convergence = True
 

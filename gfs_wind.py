@@ -172,15 +172,22 @@ class GFSWind:
         self._grid_cache: Dict[tuple, tuple] = {}
         self._grid_cache_max = int(grid_cache_max)
 
-         # ---- cadence-aware preload ----
+        # ---- cadence-aware preload ----
         if preload_hours > 0:
             step = max(1, int(self.fxx_step_hours))
             target = int(preload_hours)
 
-            # Preload only fxx values aligned to this product's cadence.
-            # Example: step=3, preload_hours=7 => 0,3,6
-            for fxx in range(0, target + 1, step):
-                # Robust: if exact fxx doesn't exist, jump to the next available upward.
+            t0 = _to_datetime_utc(run_utc)
+            dt_hr = (t0 - self.run_dt).total_seconds() / 3600.0
+            f_start = int(np.floor(dt_hr / step) * step)
+            f_start = max(0, min(f_start, self.auto_extend_max_hours))
+
+            # Preload a small bracket around f_start so the very first interpolation doesn't miss.
+            # Example: f_start=6, step=1, target=3 => 5,6,7,8
+            f0 = max(0, f_start)
+            fN = min(self.auto_extend_max_hours, f_start + target)
+
+            for fxx in range(f0, fN+1, step):
                 f_ok = self._next_available_fxx(fxx, direction=+1)
                 self._ensure_loaded(f_ok)
 
@@ -410,7 +417,17 @@ class GFSWind:
             save_dir=str(self.save_dir),
         )
         H.download(search=search)
-        ds = H.xarray(search=search, decode_timedelta=False, remove_grib = False)
+        ds = H.xarray(search=search, decode_timedelta=False, remove_grib=False)
+
+        # Herbie/cfgrib can return multiple "hypercubes" (a list of datasets).
+        # Pick the cube that contains the wind + geopotential-height fields we need.
+        if isinstance(ds, list):
+            def has_needed(d):
+                vars_lower = [v.lower() for v in d.data_vars.keys()]
+                return (any("ugrd" in v or v == "u" for v in vars_lower) and
+                        any("vgrd" in v or v == "v" for v in vars_lower) and
+                        any("gh" in v or "hgt" in v for v in vars_lower))
+            ds = next((d for d in ds if has_needed(d)), ds[0])
 
         def pick(name):
             for k in ds.data_vars:
