@@ -1,5 +1,6 @@
 from model_wind import LaunchSite, Balloon, Payload, MissionProfile, Model
 from gfs_wind import GFSWind
+from hrrr_wind import HRRRWind
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,9 +36,7 @@ if __name__ == "__main__":
         Payload(1.5, 4 * 0.3048, 0.5)
     )]
 
-    flight_profiles = []
-
-    wind = GFSWind(
+    gfs = GFSWind(
         run_utc="2026-01-10 00:00",
         save_dir="./gfs_downloads",
         product="pgrb2.0p25",
@@ -48,60 +47,112 @@ if __name__ == "__main__":
         sample_latlon_decimals=4,
     )
 
-    Model(0.1, mission_profiles, flight_profiles, wind=wind, run_time_utc="2026-01-10 00:00").altitude_model(True)
+    '''hrrr = HRRRWind(
+        run_utc="2026-01-10 00:00",
+        save_dir="./hrrr_downloads",
+        product="prs",
+        fallback_wind=gfs,
+        preload_hours=3,
+        max_hours_total=18,
+        sample_time_bin_s=30.0,
+        sample_alt_bin_m=50.0,
+        sample_latlon_decimals=6,
+        verbose=False
+    )'''
 
-    fp = flight_profiles[-1]
+    flight_profiles_gfs = []
+    #flight_profiles_hybrid = []
 
-    t = np.asarray(fp.times, dtype=float)
-    alt = np.asarray(fp.altitudes, dtype=float)
+    Model(0.1, mission_profiles, flight_profiles_gfs, wind=gfs, run_time_utc="2026-01-10 00:00").altitude_model(True)
 
-    vel = np.asarray(fp.velocities, dtype=float)      # shape (N,3)
+    #Model(0.1, mission_profiles, flight_profiles_hybrid, wind=hrrr, run_time_utc="2026-01-10 00:00").altitude_model(True)
 
-    lat = np.asarray(fp.latitudes, dtype=float)
-    lon = np.asarray(fp.longitudes, dtype=float)
+    fp_gfs = flight_profiles_gfs[-1]
+    #fp_hyb = flight_profiles_hybrid[-1]
 
-    # ----- derived quantities -----
-    vz = vel[:, 2]
-    vxy = np.linalg.norm(vel[:, :2], axis=1)
-    v3 = np.linalg.norm(vel, axis=1)
+    def extract(fp):
+        t = np.asarray(fp.times, dtype=float)
+        alt = np.asarray(fp.altitudes, dtype=float)
+        vel = np.asarray(fp.velocities, dtype=float)  # (N,3)
+        lat = np.asarray(fp.latitudes, dtype=float)
+        lon = np.asarray(fp.longitudes, dtype=float)
 
-    # burst markers (if available)
-    burst_alt = fp.burst_altitude
-    burst_t = fp.burst_time
-    has_burst = np.isfinite(burst_alt) and np.isfinite(burst_t)
+        return {
+            "t": t,
+            "alt": alt,
+            "vel": vel,
+            "vz": vel[:, 2],
+            "vxy": np.linalg.norm(vel[:, :2], axis=1),
+            "v3": np.linalg.norm(vel, axis=1),
+            "lat": lat,
+            "lon": lon,
+            "burst_alt": fp.burst_altitude,
+            "burst_t": fp.burst_time,
+        }
+
+    g = extract(fp_gfs)
+    #h = extract(fp_hyb)
+
+    def wrap180(deg):
+        return (deg + 180.0) % 360.0 - 180.0
+
+    heading_g = wrap180(np.degrees(np.arctan2(g["vel"][:,1], g["vel"][:,0])))
+    #heading_h = wrap180(np.degrees(np.arctan2(h["vel"][:,1], h["vel"][:,0])))
+
+    plt.figure()
+    plt.plot(g["t"]/60.0, heading_g, label="GFS heading")
+    #plt.plot(h["t"]/60.0, heading_h, label="HRRR→GFS heading", linestyle="--")
+    plt.xlabel("Time (min)")
+    plt.ylabel("Heading (deg, E=0, N=90)")
+    plt.title("Horizontal Velocity Heading Comparison")
+    plt.grid(True)
+    plt.legend()
 
     # ----- Plot 1: Altitude vs time -----
     plt.figure()
-    plt.plot(t/60.0, alt)
-    if has_burst:
-        plt.axvline(burst_t/60.0, linestyle="--")
-        plt.title(f"Altitude vs Time (burst @ {burst_t/60.0:.1f} min, {burst_alt:.0f} m)")
-    else:
-        plt.title("Altitude vs Time (no burst recorded)")
+    plt.plot(g["t"]/60.0, g["alt"], label="GFS")
+    #plt.plot(h["t"]/60.0, h["alt"], label="HRRR → GFS", linestyle="--")
     plt.xlabel("Time (min)")
     plt.ylabel("Altitude (m)")
+    plt.title("Altitude vs Time")
     plt.grid(True)
+    plt.legend()
 
     # ----- Plot 2: Speeds vs time -----
     plt.figure()
-    plt.plot(t/60.0, vz, label="Vertical Speed V_z (m/s)")
-    plt.plot(t/60.0, vxy, label="Horizontal Speed |V_xy| (m/s)")
-    plt.plot(t/60.0, v3, label="Total Speed |V| (m/s)")
-    if has_burst:
-        plt.axvline(burst_t/60.0, linestyle="--")
+    plt.plot(g["t"]/60.0, g["vz"], label="GFS Vz")
+    #plt.plot(h["t"]/60.0, h["vz"], label="HRRR→GFS Vz", linestyle="--")
+    plt.plot(g["t"]/60.0, g["vxy"], label="GFS |Vxy|")
+    #plt.plot(h["t"]/60.0, h["vxy"], label="HRRR→GFS |Vxy|", linestyle="--")
     plt.xlabel("Time (min)")
     plt.ylabel("Speed (m/s)")
-    plt.title("Velocity Components")
+    plt.title("Velocity Components Comparison")
     plt.grid(True)
     plt.legend()
 
     # ----- Plot 3: Ground track (lon/lat) -----
     plt.figure()
-    lon_plot = ((lon + 180.0) % 360.0) - 180.0
-    plt.plot(lon_plot, lat)
+    g_lon = ((g["lon"] + 180.0) % 360.0) - 180.0
+    #h_lon = ((h["lon"] + 180.0) % 360.0) - 180.0
+    plt.plot(g_lon, g["lat"], label="GFS")
+    #plt.plot(h_lon, h["lat"], label="HRRR → GFS", linestyle="--")
     plt.xlabel("Longitude (deg)")
     plt.ylabel("Latitude (deg)")
-    plt.title("Ground Track")
+    plt.title("Ground Track Comparison")
     plt.grid(True)
+    plt.legend()
 
     plt.show()
+
+    '''def haversine_km(lat1, lon1, lat2, lon2):
+        R = 6371.0
+        phi1 = np.radians(lat1); phi2 = np.radians(lat2)
+        dphi = np.radians(lat2-lat1)
+        dlmb = np.radians(lon2-lon1)
+        a = np.sin(dphi/2)**2 + np.cos(phi1)*np.cos(phi2)*np.sin(dlmb/2)**2
+        return 2*R*np.arcsin(np.sqrt(a))
+
+    g_end = (g["lat"][-1], ((g["lon"][-1]+180)%360)-180)
+    h_end = (h["lat"][-1], ((h["lon"][-1]+180)%360)-180)
+
+    print("Landing sep (km):", haversine_km(g_end[0], g_end[1], h_end[0], h_end[1]))'''
